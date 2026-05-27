@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Marilyn's 40th Birthday</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=Dancing+Script:wght@400;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="sparkles-bg" id="sparkles"></div>
+
+  <!-- WELCOME SCREEN -->
+  <div id="screen-welcome" class="screen active">
+    <div class="welcome-content">
+      <img src="images/main-title.png" alt="Marilyn's 40th Birthday" class="title-image">
+      <div class="welcome-form glass">
+        <input type="text" id="input-name" class="input-field" placeholder="Enter your name" maxlength="20" autocomplete="off">
+        <button id="btn-create" class="btn btn-primary">Create Game</button>
+        <div class="divider"><span>or</span></div>
+        <div class="join-row">
+          <input type="text" id="input-code" class="input-field input-code" placeholder="Room code" maxlength="4" autocomplete="off">
+          <button id="btn-join" class="btn btn-secondary">Join</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOBBY SCREEN -->
+  <div id="screen-lobby" class="screen">
+    <div class="lobby-content">
+      <h1 class="lobby-title">Game Lobby</h1>
+      <div class="room-code-box glass">
+        <span class="room-code-label">Share this code</span>
+        <span id="room-code-display" class="room-code"></span>
+      </div>
+      <div class="players-section glass">
+        <h3>Players</h3>
+        <ul id="player-list" class="player-list"></ul>
+      </div>
+      <div id="mc-controls" class="mc-controls">
+        <button id="btn-start" class="btn btn-primary btn-large">Start Game</button>
+      </div>
+      <div id="waiting-msg" class="waiting-msg" style="display:none;">
+        <div class="pulse-dot"></div>
+        <span>Waiting for the host to start...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME SCREEN (Category Selection) -->
+  <div id="screen-game" class="screen">
+    <div class="game-header">
+      <h2 class="game-title">Choose a Category</h2>
+      <div class="game-header-info">
+        <span id="player-count-badge" class="badge"></span>
+      </div>
+    </div>
+    <div id="turn-banner" class="turn-banner">
+      <div class="pulse-dot"></div>
+      <span id="turn-banner-text"></span>
+    </div>
+    <div class="categories-grid">
+      <button class="category-card" data-category="marilyn-trivia">
+        <img src="images/marilyn-trivia.png" alt="Marilyn Trivia">
+        <span class="card-remaining" data-remaining="marilyn-trivia"></span>
+      </button>
+      <button class="category-card" data-category="cosmic-chaos">
+        <img src="images/cosmic-chaos.png" alt="Cosmic Chaos">
+        <span class="card-remaining" data-remaining="cosmic-chaos"></span>
+      </button>
+      <button class="category-card" data-category="heart-strings">
+        <img src="images/heart-strings.png" alt="Heart Strings">
+        <span class="card-remaining" data-remaining="heart-strings"></span>
+      </button>
+      <button class="category-card" data-category="prophecies">
+        <img src="images/prophecies.png" alt="Prophecies">
+        <span class="card-remaining" data-remaining="prophecies"></span>
+      </button>
+      <button class="category-card" data-category="choose-your-destiny">
+        <img src="images/choose-your-destiny.png" alt="Choose Your Destiny">
+        <span class="card-remaining" data-remaining="choose-your-destiny"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- QUESTION SCREEN -->
+  <div id="screen-question" class="screen">
+    <div class="question-container">
+      <div class="card-flip" id="card-flip">
+        <div class="card-inner" id="card-inner">
+          <div class="card-front">
+            <div class="card-front-glow"></div>
+            <img id="card-front-img" src="" alt="" class="card-front-image">
+          </div>
+          <div class="card-back" id="card-back">
+            <div class="question-type-badge" id="question-type-badge"></div>
+            <p class="question-text" id="question-text"></p>
+            <p class="question-instruction" id="question-instruction"></p>
+            <div id="question-options" class="question-options"></div>
+            <div id="vote-results" class="vote-results"></div>
+            <div class="question-actions">
+              <button id="btn-challenge" class="btn btn-challenge" style="display:none;">Challenge Someone</button>
+              <button id="btn-pick-next" class="btn btn-primary" style="display:none;">Pick Next Player</button>
+            </div>
+            <p class="drawn-by" id="drawn-by"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHALLENGE MODAL -->
+  <div id="modal-challenge" class="modal" style="display:none;">
+    <div class="modal-content glass">
+      <h3>Challenge a Player</h3>
+      <ul id="challenge-player-list" class="challenge-list"></ul>
+      <button id="btn-cancel-challenge" class="btn btn-secondary">Cancel</button>
+    </div>
+  </div>
+
+  <!-- TURN PICKER MODAL -->
+  <div id="modal-turn" class="modal" style="display:none;">
+    <div class="modal-content glass">
+      <h3>Who picks next?</h3>
+      <ul id="turn-player-list" class="challenge-list"></ul>
+      <button id="btn-cancel-turn" class="btn btn-secondary">Cancel</button>
+    </div>
+  </div>
+
+  <!-- CHALLENGE NOTIFICATION -->
+  <div id="challenge-toast" class="challenge-toast" style="display:none;">
+    <div class="toast-content">
+      <span class="toast-icon">&#9889;</span>
+      <span id="toast-message"></span>
+    </div>
+  </div>
+
+  <!-- ERROR TOAST -->
+  <div id="error-toast" class="error-toast" style="display:none;">
+    <span id="error-message"></span>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
