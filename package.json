@@ -1,0 +1,13 @@
+{
+  "name": "marilyns-40th-birthday",
+  "version": "1.0.0",
+  "description": "Marilyn's 40th Birthday Card Game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "socket.io": "^4.7.5"
+  }
+}
