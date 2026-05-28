@@ -79,6 +79,9 @@ function getQuestions() {
   };
 }
 
+// How long to keep a disconnected player before removing them (5 minutes)
+const DISCONNECT_TIMEOUT = 5 * 60 * 1000;
+
 io.on('connection', (socket) => {
   let currentRoom = null;
   let playerName = null;
@@ -88,7 +91,7 @@ io.on('connection', (socket) => {
     playerName = name;
     currentRoom = code;
     rooms[code] = {
-      players: [{ id: socket.id, name, isMC: true }],
+      players: [{ id: socket.id, name, isMC: true, connected: true }],
       questions: getQuestions(),
       drawnCards: {},
       gameStarted: false,
@@ -102,12 +105,27 @@ io.on('connection', (socket) => {
   socket.on('join-room', ({ name, code }) => {
     const room = rooms[code.toUpperCase()];
     if (!room) return socket.emit('error-msg', 'Room not found. Check the code and try again.');
-    if (room.players.find(p => p.name.toLowerCase() === name.toLowerCase()))
-      return socket.emit('error-msg', 'That name is already taken. Pick another!');
+
+    // Check if this player is rejoining (same name, disconnected)
+    const existing = room.players.find(p => p.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+      if (existing.connected) {
+        return socket.emit('error-msg', 'That name is already taken. Pick another!');
+      }
+      // Rejoin: update their socket id and mark connected
+      existing.id = socket.id;
+      existing.connected = true;
+      // Clear any pending removal timer
+      if (existing.disconnectTimer) {
+        clearTimeout(existing.disconnectTimer);
+        delete existing.disconnectTimer;
+      }
+    } else {
+      room.players.push({ id: socket.id, name, isMC: false, connected: true });
+    }
 
     playerName = name;
     currentRoom = code.toUpperCase();
-    room.players.push({ id: socket.id, name, isMC: false });
     socket.join(currentRoom);
 
     socket.emit('room-joined', {
@@ -118,6 +136,36 @@ io.on('connection', (socket) => {
       currentTurn: room.currentTurn,
     });
     socket.to(currentRoom).emit('player-joined', { name, players: room.players });
+  });
+
+  // Rejoin handler — client sends this automatically on reconnect
+  socket.on('rejoin', ({ name, code }) => {
+    const room = rooms[code];
+    if (!room) return socket.emit('rejoin-failed');
+
+    const existing = room.players.find(p => p.name.toLowerCase() === name.toLowerCase());
+    if (!existing) return socket.emit('rejoin-failed');
+
+    // Update socket id and mark connected
+    existing.id = socket.id;
+    existing.connected = true;
+    if (existing.disconnectTimer) {
+      clearTimeout(existing.disconnectTimer);
+      delete existing.disconnectTimer;
+    }
+
+    playerName = name;
+    currentRoom = code;
+    socket.join(code);
+
+    socket.emit('room-joined', {
+      code,
+      players: room.players,
+      gameStarted: room.gameStarted,
+      drawnCards: room.drawnCards,
+      currentTurn: room.currentTurn,
+    });
+    socket.to(code).emit('player-joined', { name, players: room.players });
   });
 
   socket.on('start-game', () => {
@@ -197,18 +245,30 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     if (!currentRoom || !rooms[currentRoom]) return;
     const room = rooms[currentRoom];
-    room.players = room.players.filter(p => p.id !== socket.id);
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
 
-    if (room.players.length === 0) {
-      delete rooms[currentRoom];
-      return;
-    }
+    // Mark as disconnected but DON'T remove yet
+    player.connected = false;
 
-    if (!room.players.some(p => p.isMC)) {
-      room.players[0].isMC = true;
-    }
+    // Give them 5 minutes to come back
+    player.disconnectTimer = setTimeout(() => {
+      if (!rooms[currentRoom]) return;
+      // Still disconnected after timeout — remove them
+      room.players = room.players.filter(p => p.id !== socket.id || p.connected);
 
-    io.to(currentRoom).emit('player-left', { name: playerName, players: room.players });
+      if (room.players.length === 0) {
+        delete rooms[currentRoom];
+        return;
+      }
+
+      // If MC left, promote someone
+      if (!room.players.some(p => p.isMC)) {
+        room.players[0].isMC = true;
+      }
+
+      io.to(currentRoom).emit('player-left', { name: playerName, players: room.players });
+    }, DISCONNECT_TIMEOUT);
   });
 });
 
