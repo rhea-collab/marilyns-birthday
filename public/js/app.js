@@ -6,6 +6,33 @@ let currentTurn = null;
 let players = [];
 let currentQuestion = null;
 let currentCategory = null;
+let roomCode = '';
+
+// ==================
+// SESSION PERSISTENCE
+// ==================
+function saveSession() {
+  if (myName && roomCode) {
+    sessionStorage.setItem('marilyn-session', JSON.stringify({
+      name: myName,
+      code: roomCode,
+      isMC: isMC,
+    }));
+  }
+}
+
+function loadSession() {
+  try {
+    const data = sessionStorage.getItem('marilyn-session');
+    return data ? JSON.parse(data) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function clearSession() {
+  sessionStorage.removeItem('marilyn-session');
+}
 
 const categoryImages = {
   'marilyn-trivia': 'images/marilyn-trivia.png',
@@ -96,21 +123,25 @@ document.getElementById('input-code').addEventListener('keydown', (e) => {
 socket.on('room-created', ({ code, players: p }) => {
   isMC = true;
   players = p;
+  roomCode = code;
   document.getElementById('room-code-display').textContent = code;
   renderPlayerList();
   document.getElementById('mc-controls').style.display = 'flex';
   document.getElementById('waiting-msg').style.display = 'none';
   showScreen('screen-lobby');
   initRemainingCounts(categoryInitialCounts);
+  saveSession();
 });
 
 socket.on('room-joined', ({ code, players: p, gameStarted, drawnCards, currentTurn: turn }) => {
-  isMC = false;
   players = p;
+  roomCode = code;
+  // Check if we are the MC
+  isMC = players.some(pl => pl.name.toLowerCase() === myName.toLowerCase() && pl.isMC);
   document.getElementById('room-code-display').textContent = code;
   renderPlayerList();
-  document.getElementById('mc-controls').style.display = 'none';
-  document.getElementById('waiting-msg').style.display = gameStarted ? 'none' : 'flex';
+  document.getElementById('mc-controls').style.display = isMC ? 'flex' : 'none';
+  document.getElementById('waiting-msg').style.display = (!isMC && !gameStarted) ? 'flex' : 'none';
 
   if (gameStarted) {
     currentTurn = turn;
@@ -125,6 +156,7 @@ socket.on('room-joined', ({ code, players: p, gameStarted, drawnCards, currentTu
     initRemainingCounts(categoryInitialCounts);
     showScreen('screen-lobby');
   }
+  saveSession();
 });
 
 socket.on('player-joined', ({ name, players: p }) => {
@@ -415,7 +447,17 @@ socket.on('disconnect', () => {
 });
 
 socket.on('connect', () => {
-  if (myName && document.getElementById('screen-welcome').classList.contains('active') === false) {
-    showError('Reconnected! You may need to rejoin the game.');
+  // Try to rejoin automatically
+  const session = loadSession();
+  if (session && session.name && session.code) {
+    myName = session.name;
+    isMC = session.isMC || false;
+    socket.emit('rejoin', { name: session.name, code: session.code });
   }
+});
+
+socket.on('rejoin-failed', () => {
+  clearSession();
+  showScreen('screen-welcome');
+  showError('Game session expired. Please join again.');
 });
